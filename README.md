@@ -1,1 +1,1 @@
-# Information Extractured (Structured Documents)
+# Information Extraction (Template-Based)
