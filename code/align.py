@@ -40,3 +40,41 @@ def align_brute_force(temp_path, test_path, good_match_pct=0.9, max_feat=100):
     img_aligned = cv2.warpPerspective(img_test, h, (width, height))
     # saves the test image
     cv2.imwrite(test_path, img_aligned)
+    
+def align_flann(temp_path, test_path, good_match_pct=0.9, max_feat=100):
+    """
+    aligns images with the template
+    using brute force method
+    """
+    # reads template image
+    img_temp = cv2.imread(temp_path, cv2.IMREAD_COLOR)
+    # reads test image
+    img_test = cv2.imread(test_path, cv2.IMREAD_COLOR)
+    # converts test image to grayscale
+    img_1 = cv2.cvtColor(img_test, cv2.COLOR_BGR2GRAY)
+    # converts template image to grayscale
+    img_2 = cv2.cvtColor(img_temp, cv2.COLOR_BGR2GRAY)
+    # feature detection (ORB)
+    orb = cv2.ORB_create(max_feat)
+    # compute the key points and descriptors
+    kp_1, des_1 = orb.detectAndCompute(img_1, None)
+    kp_2, des_2 = orb.detectAndCompute(img_2, None)
+    # sets flann_based matching parameters and match features
+    i_params = dict(algorithm=6, table_number=10)
+    s_params = dict(checks=100)
+    flann = cv2.FlannBasedMatcher(i_params, s_params)
+    match_feats = flann.knnMatch(des_1, des_2, 2)
+    # finds the best good match percentage
+    g_matches = []
+    for n, m in match_feats:
+        if n.distance < good_match_pct*m.distance:
+            g_matches.append(n)
+    tst_points = np.float32([kp_1[item.queryIdx].pt for item in g_matches]).reshape(-1, 1, 2)
+    tmp_points = np.float32([kp_2[item.queryIdx].pt for item in g_matches]).reshape(-1, 1, 2)
+    # compute homography
+    h, mask = cv2.findHomography(tst_points, tmp_points, cv2.RANSAC)
+    height, width, channels = img_temp.shape
+    # aligns the test image
+    img_aligned = cv2.warpPerspective(img_test, h, (width, height))
+    # saves the test image
+    cv2.imwrite(test_path, img_aligned)
